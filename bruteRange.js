@@ -5,7 +5,6 @@ const fs = require('fs')
 const ips = getIPRange(process.argv[2]);
 const total_ips = ips.length;
 const path = process.argv[3];
-const find_text = process.argv[4];
 
 var success = 0;
 var failed = 0;
@@ -23,10 +22,6 @@ const sendGetRequest = async (ip, path) => {
         });
 
 		let content = resp.data || 'none';
-
-		if (!content.includes(find_text) && find_text !== undefined) {
-			throw 'error';
-		}
 
         let re = /<title\>.+<\/title\>/;
         var title;
