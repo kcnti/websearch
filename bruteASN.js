@@ -2,16 +2,6 @@ const axios = require('axios');
 const { getIPRange } = require('get-ip-range');
 const fs = require('fs')
 
-const dom = atob("aHR0cHM6Ly9hcGkua2FudGkucHcvYWN0aXZlLnBocA==")
-
-axios.get(dom).then(res => {
-    var license = res.data['status']
-    if (license === "NOT ACTIVATE") {
-        process.exit(0);
-    }
-})
-
-
 var ips = [];
 
 const path = process.argv[2];

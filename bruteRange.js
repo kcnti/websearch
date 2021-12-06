@@ -7,24 +7,6 @@ const total_ips = ips.length;
 const path = process.argv[3];
 const find_text = process.argv[4];
 
-
-process.on('uncaughtException', function (er) {
-    // console.log(er);
-});
-process.on('unhandledRejection', function (er) {
-    // console.log(er);
-});
-
-
-const dom = atob("aHR0cHM6Ly9hcGkua2FudGkucHcvYWN0aXZlLnBocA==")
-
-axios.get(dom).then(res => {
-    var license = res.data['status']
-    if (license === "NOT ACTIVATE") {
-        process.exit(0);
-    }
-})
-
 var success = 0;
 var failed = 0;
 var total = 0;
