@@ -1,5 +1,5 @@
 const dns = require('dns').promises;
-const ip = '';
+const ip = 'ip';
 
 
 const rvip = async () => {
