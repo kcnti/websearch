@@ -2,6 +2,7 @@ const axios = require('axios');
 const https = require('https');
 const { getIPRange } = require('get-ip-range');
 const fs = require('fs')
+const ip = require('ip')
 
 const agent = new https.Agent({  
   rejectUnauthorized: false
@@ -39,8 +40,6 @@ const sendGetRequest = async (ip, path) => {
         })
         
     } catch (err) {
-        // console.log(err)
-        // failed += 1
         try {
             let url = 'https://' + ip + path;
             let resp = await axios.get(url, {
@@ -65,8 +64,7 @@ const sendGetRequest = async (ip, path) => {
             })
             
         } catch (err) {
-            // console.log(`[Total: ${success + failed}/${total_ips}] Url:`, 'https://' + ip + path, `Not Found`);
-            // console.log(err)
+            console.log(`[Total: (${success}:${failed}) ${success + failed}/${total_ips}] Url:`, 'https://' + ip + path, `Not Found`);
             failed += 1
         }
     }
@@ -74,15 +72,21 @@ const sendGetRequest = async (ip, path) => {
 
 const getIPSubnetsForASN = async () => {
     try {
-      // Make a request to the Bgpview API
       const response = await axios.get(`https://api.bgpview.io/asn/${process.argv[2]}/prefixes`);
-    //   console.log(response.data)
-      var object = {};
+      var ipv4Parents = {}
       if (response.status === 200) {
         const data = response.data.data;
         if (data.ipv4_prefixes && data.ipv4_prefixes.length > 0) {
-          const ipv4Subnets = data.ipv4_prefixes.map((data) => data.prefix);
-          return ipv4Subnets;
+          const ipv4Subnets = data.ipv4_prefixes.map((data) => {
+            if (data.parent.prefix !== null) {
+              if (ipv4Parents[data.parent.prefix] === undefined) {
+                ipv4Parents[data.parent.prefix] = [data.prefix]
+              } else {
+                ipv4Parents[data.parent.prefix].push(data.prefix)
+              }
+            }
+          });
+          return ipv4Parents;
         }
       } else {
         console.error('Failed to retrieve ASN information');
@@ -94,59 +98,73 @@ const getIPSubnetsForASN = async () => {
 
 
 const main = async () => {
-    // const ips = await processRanges();
-    // total_ips = ips.length;
-    // console.log("IPs", total_ips);
-  
-    // Specify the batch size and delay between batches
-    const batchSize = 200; // Adjust the batch size as needed
-    const delayMs = 1000; // Adjust the delay as needed (1000ms = 1 second)
-  
-    console.log('started')
-    const ranges = await getIPSubnetsForASN()
 
-    // console.log(ranges)
-
-    const isContained = (x, y) => {
-      const xRange = getIPRange(x);
-      const yRange = getIPRange(y);
-      if (xRange.length > yRange.length) return false;
-      return (
-        xRange[0] >= yRange[0] && xRange[1] <= yRange[1]
-      );
-    };
-
+    const batchSize = 200;
+    const delayMs = 1000;
     const filteredRanges = []
   
-    for (let i = 0; i < ranges.length; i += 1) {
-      const currentRange = ranges[i];
-      for (let j = 0; j < ranges.length; j += 1) {
-        if (i !== j && isContained(currentRange, ranges[j])) {
-          if (!filteredRanges.includes(ranges[j])) filteredRanges.push(ranges[j])
-          break;
+    const parents = await getIPSubnetsForASN()  
+
+    const findSubnet = (subnets) => {
+        const result = [];
+        const small = [];
+        for (let i = 0; i < subnets.length; i++) {
+          const subnetX = subnets[i];
+          const rangeX = ip.cidrSubnet(subnetX);
+          if (small.includes(subnetX)) continue
+      
+          for (let j = 0; j < subnets.length; j++) {
+            if (i !== j) {
+              const subnetY = subnets[j];
+              const rangeY = ip.cidrSubnet(subnetY);
+      
+              if (rangeX.contains(rangeY.firstAddress)) {
+                small.push(subnetY)
+              }
+            }
+          }
+      
+          if (!small.includes(subnetX)) {
+            result.push(subnetX);
+          }
         }
-      }
+        return result;
     }
 
-    // Filter out subnets contained in other subnets
-    console.log('Filtered ranges:', filteredRanges);
+    for (const [k, v] of Object.entries(parents)) {
+      const ranges = findSubnet(v)
+      ranges.forEach(range => {
+        filteredRanges.push(range)
+      });
+    };
 
-    // total_ips = filteredRanges.length;
+    function calculateTotalIPs(subnets) {
+      let totalIPs = 0;
+    
+      for (const subnet of subnets) {
+        const range = ip.cidrSubnet(subnet);
+        const start = ip.toLong(range.firstAddress);
+        const end = ip.toLong(range.lastAddress);
+        totalIPs += end - start + 1;
+      }
+    
+      return totalIPs;
+    }
+    
+
+    console.log('Filtered ranges:', filteredRanges);
+    console.log(`Total IP: ${calculateTotalIPs(filteredRanges)}`)
     
     for (let j = 0; j < filteredRanges.length; j += 1) {
       const ips = getIPRange(filteredRanges[j]);
       console.log(`${filteredRanges[j]} (${ips.length})`)
       total_ips = ips.length
       for (let i = 0; i < ips.length; i += batchSize) {
-        // console.log(`${i} / ${i+batchSize}`)
         const batch = ips.slice(i, i + batchSize);
-        // Create an array of promises for the current batch
         const requestPromises = batch.map((ip) => sendGetRequest(ip, path));
     
-        // Execute the requests in parallel for the current batch
         await Promise.all(requestPromises);
     
-        // Introduce a delay before the next batch if there are more IP addresses
         if (i + batchSize < ips.length) {
           await new Promise((resolve) => setTimeout(resolve, delayMs));
         }
