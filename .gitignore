@@ -1,5 +1,5 @@
 node_modules
 output
-test
-*.txt
-*.lst
+test*
+*txt
+*lst
