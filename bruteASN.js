@@ -160,7 +160,6 @@ const main = async () => {
     for (let j = 0; j < filteredRanges.length; j += 1) {
       const ips = getIPRange(filteredRanges[j]);
       console.log(`${filteredRanges[j]} (${ips.length})`)
-      total_ips = ips.length
       for (let i = 0; i < ips.length; i += batchSize) {
         const batch = ips.slice(i, i + batchSize);
         const requestPromises = batch.map((ip) => sendGetRequest(ip, path));
