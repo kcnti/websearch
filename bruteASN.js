@@ -151,9 +151,11 @@ const main = async () => {
       return totalIPs;
     }
     
+    total_ips = calculateTotalIPs(filteredRanges)
 
     console.log('Filtered ranges:', filteredRanges);
-    console.log(`Total IP: ${calculateTotalIPs(filteredRanges)}`)
+    console.log(`Total IP: ${total_ips}`)
+
     
     for (let j = 0; j < filteredRanges.length; j += 1) {
       const ips = getIPRange(filteredRanges[j]);
