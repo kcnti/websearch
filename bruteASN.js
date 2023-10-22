@@ -19,7 +19,7 @@ const sendGetRequest = async (ip, path) => {
     try {
         let url = 'http://' + ip + path;
         let resp = await axios.get(url, {
-            timeout: 5000,
+            timeout: 1000,
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.55 Safari/537.36'
             },
@@ -30,9 +30,9 @@ const sendGetRequest = async (ip, path) => {
         let title = resp.data.match(re)[0].replace("<title>", "").replace("</title>", "") || "no title specific";
 
         success += 1
-        console.log(`[Total: ${success + failed}/${total_ips}] Found: ${url} Title: ${title}`);
+        console.log(`[Total: (${success}:${failed}) ${success + failed}/${total_ips}] Found: ${url} Title: ${title}`);
         
-        fs.appendFile('./result.txt', url+" | Title: "+title+"\n", err => {
+        fs.appendFile('./' + process.argv[2] + '.txt', url+" | Title: "+title+"\n", err => {
             if (err) {
                 console.error(err)
                 return
@@ -43,7 +43,7 @@ const sendGetRequest = async (ip, path) => {
         try {
             let url = 'https://' + ip + path;
             let resp = await axios.get(url, {
-                timeout: 5000,
+                timeout: 1000,
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.55 Safari/537.36'
                 },
@@ -54,9 +54,9 @@ const sendGetRequest = async (ip, path) => {
             let title = resp.data.match(re)[0].replace("<title>", "").replace("</title>", "") || "no title specific";
 
             success += 1
-            console.log(`[Total: ${success + failed}/${total_ips}] Found: ${url} Title: ${title}`);
+            console.log(`[Total: (${success}:${failed}) ${success + failed}/${total_ips}] Found: ${url} Title: ${title}`);
             
-            fs.appendFile('./result.txt', url+" | Title: "+title+"\n", err => {
+            fs.appendFile('./' + process.argv[2] + '.txt', url+" | Title: "+title+"\n", err => {
                 if (err) {
                     console.error(err)
                     return
@@ -99,7 +99,7 @@ const getIPSubnetsForASN = async () => {
 
 const main = async () => {
 
-    const batchSize = 200;
+    const batchSize = 10000;
     const delayMs = 1000;
     const filteredRanges = []
   
@@ -158,18 +158,22 @@ const main = async () => {
 
     
     for (let j = 0; j < filteredRanges.length; j += 1) {
-      const ips = getIPRange(filteredRanges[j]);
-      console.log(`${filteredRanges[j]} (${ips.length})`)
-      for (let i = 0; i < ips.length; i += batchSize) {
-        const batch = ips.slice(i, i + batchSize);
-        const requestPromises = batch.map((ip) => sendGetRequest(ip, path));
-    
-        await Promise.all(requestPromises);
-    
-        if (i + batchSize < ips.length) {
-          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        try {
+            const ips = getIPRange(filteredRanges[j]);
+            console.log(`${filteredRanges[j]} (${ips.length})`)
+            for (let i = 0; i < ips.length; i += batchSize) {
+                const batch = ips.slice(i, i + batchSize);
+                const requestPromises = batch.map((ip) => sendGetRequest(ip, path));
+            
+                await Promise.all(requestPromises);
+            
+                if (i + batchSize < ips.length) {
+                await new Promise((resolve) => setTimeout(resolve, delayMs));
+                }
+            }
+        } catch (e) {
+            
         }
-      }
     }
   };
   
