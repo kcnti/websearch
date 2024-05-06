@@ -10,6 +10,17 @@ const agent = new https.Agent({
 
 const path = process.argv[3];
 
+const fileName = process.argv[4] + '.txt' || process.argv[2] + '.txt';
+
+fs.readdir('./output', (err, files) => {
+  files.forEach(file => {
+    if (file.includes(process.argv[2])) {
+      console.log('File exists')
+      process.exit(0)
+    }
+  });
+});
+
 var success = 0;
 var failed = 0;
 
@@ -32,7 +43,7 @@ const sendGetRequest = async (ip, path) => {
         success += 1
         console.log(`[Total: (${success}:${failed}) ${success + failed}/${total_ips}] Found: ${url} Title: ${title}`);
         
-        fs.appendFile('./' + process.argv[2] + '.txt', url+" | Title: "+title+"\n", err => {
+        fs.appendFile('./output/' + fileName, url+" | Title: "+title+"\n", err => {
             if (err) {
                 console.error(err)
                 return
@@ -56,7 +67,7 @@ const sendGetRequest = async (ip, path) => {
             success += 1
             console.log(`[Total: (${success}:${failed}) ${success + failed}/${total_ips}] Found: ${url} Title: ${title}`);
             
-            fs.appendFile('./' + process.argv[2] + '.txt', url+" | Title: "+title+"\n", err => {
+            fs.appendFile('./output/' + fileName, url+" | Title: "+title+"\n", err => {
                 if (err) {
                     console.error(err)
                     return
@@ -99,7 +110,7 @@ const getIPSubnetsForASN = async () => {
 
 const main = async () => {
 
-    const batchSize = 10000;
+    const batchSize = 1000;
     const delayMs = 1000;
     const filteredRanges = []
   
